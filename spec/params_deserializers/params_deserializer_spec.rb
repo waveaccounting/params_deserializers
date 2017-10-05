@@ -27,10 +27,13 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+require 'rails_helper'
 describe ParamsDeserializer do
   describe '#deserialize' do
     it 'returns a HashWithIndifferentAccess' do
-      deserializer = Class.new(ParamsDeserializer).new({})
+      deserializer = Class
+        .new(ParamsDeserializer)
+        .new(ActionController::Parameters.new({}))
       expect(deserializer.deserialize).to be_a ::ActiveSupport::HashWithIndifferentAccess
     end
   end
@@ -47,7 +50,7 @@ describe ParamsDeserializer do
     end
 
     it 'copies an old param to a new param' do
-      new_params = subject.new(params).deserialize
+      new_params = subject.new(ActionController::Parameters.new(params)).deserialize
       expect(new_params[:id]).to eql(params[:id])
       expect(new_params[:name]).to eql(params[:name])
     end
@@ -62,7 +65,7 @@ describe ParamsDeserializer do
     end
 
     it 'allows method access for params?' do
-      instance = subject.new({foo: 'baz'})
+      instance = subject.new(ActionController::Parameters.new({foo: 'baz'}))
       new_params = instance.deserialize
 
       expect(new_params[:foo]).to eql('bar')
@@ -79,7 +82,9 @@ describe ParamsDeserializer do
     end
 
     it 'does not return the ignored attribute' do
-      instance = subject.new({ foo: "foo", bar: "bar" })
+      instance = subject.new(
+        ActionController::Parameters.new({ foo: "foo", bar: "bar" })
+      )
       new_params = instance.deserialize
 
       expect(new_params).to eql({ "foo" => "foo" })
@@ -87,14 +92,12 @@ describe ParamsDeserializer do
 
     it 'throws an error if given an undefined attribute' do
       expect {
-        subject.new({ foo: "foo", bar: "bar", baz: "baz", quux: "quux" }).deserialize
+        subject.new(
+          ActionController::Parameters.new(
+            { foo: "foo", bar: "bar", baz: "baz", quux: "quux" }
+          )
+        ).deserialize
       }.to raise_error(ParamsDeserializer::InvalidKeyError)
-    end
-
-    it 'does not throw an error if the hash is hash with indifferent access' do
-      expect {
-        subject.new({ foo: "foo" }.with_indifferent_access).deserialize
-      }.to_not raise_error
     end
   end
 
@@ -107,7 +110,7 @@ describe ParamsDeserializer do
     end
 
     it 'allows methods to access params' do
-      instance = subject.new({foo: 'bar'})
+      instance = subject.new(ActionController::Parameters.new({foo: 'bar'}))
       new_params = instance.deserialize
 
       expect(new_params[:foo]).to eql('barbaz')
@@ -124,12 +127,12 @@ describe ParamsDeserializer do
       end
 
       it 'copies an old param to a new param' do
-        new_params = subject.new({ foo: 'bar' }).deserialize
+        new_params = subject.new(ActionController::Parameters.new({ foo: 'bar' })).deserialize
         expect(new_params[:foo]).to eql('bar')
       end
 
       it 'does not overwrite an override method when it is defined before `attribute` is called' do
-        new_params = subject.new({ bar: 'quux' }).deserialize
+        new_params = subject.new(ActionController::Parameters.new({ bar: 'quux' })).deserialize
         expect(new_params[:bar]).to eql('baz')
       end
     end
@@ -144,19 +147,23 @@ describe ParamsDeserializer do
       end
 
       it 'allows an attribute to be renamed' do
-        new_params = subject.new({ foo: 'baz' }).deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new({ foo: 'baz' })
+        ).deserialize
 
         expect(new_params[:foo_bar]).to eql('baz')
         expect(new_params[:foo]).to be_nil
       end
 
       it 'does not overwrite an override method when it is defined before `attribute` is called' do
-        new_params = subject.new({ quux: 'grault' }).deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new({ quux: 'grault' })
+        ).deserialize
         expect(new_params[:new_quux]).to eql('corge')
       end
 
       it 'creates and calls the post-rename method' do
-        deserializer = subject.new({ foo: 'baz' })
+        deserializer = subject.new(ActionController::Parameters.new({ foo: 'baz' }))
         expect(deserializer).to receive(:foo_bar)
         expect(deserializer).to_not respond_to(:foo)
         deserializer.deserialize
@@ -173,7 +180,7 @@ describe ParamsDeserializer do
       end
 
       it 'puts the new key in to new_params' do
-        instance = subject.new(foos: [{bar: 1}])
+        instance = subject.new(ActionController::Parameters.new(foos: [{bar: 1}]))
         new_params = instance.deserialize
 
         expect(new_params).to have_key :foos_attributes
@@ -189,7 +196,7 @@ describe ParamsDeserializer do
       end
 
       it 'defaults to the key provided' do
-        instance = subject.new(foos: [{bar: 1}])
+        instance = subject.new(ActionController::Parameters.new(foos: [{bar: 1}]))
         new_params = instance.deserialize
 
         expect(new_params).to have_key :foos
@@ -206,8 +213,12 @@ describe ParamsDeserializer do
           has_many :foos, deserializer: child_deserializer
         end
 
-        new_params = deserializer.new(foos: [{ bar: 1, baz: 2},
-                                             { bar: 3, baz: 4 }]).deserialize
+        new_params = deserializer.new(
+          ActionController::Parameters.new(
+            foos: [{ bar: 1, baz: 2},
+              { bar: 3, baz: 4 }]
+          )
+        ).deserialize
 
         expected = [{ baz: 2 }, { baz: 4 }].map(&:with_indifferent_access)
         expect(new_params[:foos]).to eql expected
@@ -220,7 +231,9 @@ describe ParamsDeserializer do
           has_many :foos
         end
 
-        expect(deserializer.new(foos: nil).deserialize[:foos]).to be_nil
+        expect(deserializer.new(
+          ActionController::Parameters.new(foos: nil)
+        ).deserialize[:foos]).to be_nil
       end
 
       it 'returns nil with a child deserializer' do
@@ -232,7 +245,9 @@ describe ParamsDeserializer do
           has_many :foos, deserializer: child_deserializer
         end
 
-        expect(deserializer.new(foos: nil).deserialize[:foos]).to be_nil
+        expect(deserializer.new(
+          ActionController::Parameters.new(foos: nil)
+        ).deserialize[:foos]).to be_nil
       end
     end
   end
@@ -244,7 +259,9 @@ describe ParamsDeserializer do
         root :fooBar
         attributes :bazQuux
       end
-      new_params = deserializer.new(fooBar: { bazQuux: 'corge' }).deserialize
+      new_params = deserializer.new(
+        ActionController::Parameters.new(fooBar: { bazQuux: 'corge' })
+      ).deserialize
 
       expect(new_params[:fooBar]).to be_nil
       expect(new_params[:foo_bar][:bazQuux]).to be_nil
@@ -262,7 +279,9 @@ describe ParamsDeserializer do
         has_many :fooBars, deserializer: child_deserializer
       end
 
-      new_params = deserializer.new(fooBars: [{ bazQuux: 'corge' }]).deserialize
+      new_params = deserializer.new(
+        ActionController::Parameters.new(fooBars: [{ bazQuux: 'corge' }])
+      ).deserialize
 
       expect(new_params[:foo_bars][0][:bazQuux]).to eql('corge')
       expect(new_params[:foo_bars][0][:baz_quux]).to be_nil
@@ -280,7 +299,9 @@ describe ParamsDeserializer do
         has_many :fooBars, deserializer: child_deserializer
       end
 
-      new_params = deserializer.new(fooBars: [{ baz_quux: 'corge' }]).deserialize
+      new_params = deserializer.new(
+        ActionController::Parameters.new(fooBars: [{ baz_quux: 'corge' }])
+      ).deserialize
 
       expect(new_params[:foo_bars][0][:bazQuux]).to eql('corge')
       expect(new_params[:foo_bars][0][:baz_quux]).to be_nil
@@ -294,7 +315,9 @@ describe ParamsDeserializer do
       end
 
       it 'does not transform key case' do
-        new_params = subject.new(camelCase: 'foo').deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new(camelCase: 'foo')
+        ).deserialize
         expect(new_params[:camelCase]).to eql('foo')
         expect(new_params[:CamelCase]).to be_nil
         expect(new_params[:camel_case]).to be_nil
@@ -310,7 +333,9 @@ describe ParamsDeserializer do
       end
 
       it 'transforms all keys to snake_case' do
-        new_params = subject.new(camelCase: 'foo').deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new(camelCase: 'foo')
+        ).deserialize
         expect(new_params[:camel_case]).to eql('foo')
         expect(new_params[:camelCase]).to be_nil
       end
@@ -325,7 +350,9 @@ describe ParamsDeserializer do
       end
 
       it 'transforms all keys to CamelCase' do
-        new_params = subject.new(snake_case: 'foo').deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new(snake_case: 'foo')
+        ).deserialize
         expect(new_params[:SnakeCase]).to eql('foo')
         expect(new_params[:snake_case]).to be_nil
       end
@@ -340,7 +367,9 @@ describe ParamsDeserializer do
       end
 
       it 'transforms all keys to lowerCamel' do
-        new_params = subject.new(snake_case: 'foo').deserialize
+        new_params = subject.new(
+          ActionController::Parameters.new(snake_case: 'foo')
+        ).deserialize
         expect(new_params[:snakeCase]).to eql('foo')
         expect(new_params[:snake_case]).to be_nil
       end
@@ -356,7 +385,9 @@ describe ParamsDeserializer do
     end
 
     it 'keeps the root key by default' do
-      new_params = deserializer.new(foo: { bar: 'baz' }).deserialize
+      new_params = deserializer.new(
+        ActionController::Parameters.new(foo: { bar: 'baz' })
+      ).deserialize
 
       expect(new_params[:foo][:bar]).to eql('baz')
     end
@@ -373,7 +404,9 @@ describe ParamsDeserializer do
       before { deserializer.root :foo, discard: true }
 
       it 'discards the root key when the discard option is true' do
-        new_params = deserializer.new(foo: { bar: 'baz' }).deserialize
+        new_params = deserializer.new(
+          ActionController::Parameters.new(foo: { bar: 'baz' })
+        ).deserialize
 
         expect(new_params[:foo]).to be_nil
         expect(new_params[:bar]).to eql('baz')
@@ -395,13 +428,13 @@ describe ParamsDeserializer do
 
       it 'leaves undefined params undefined' do
         params.delete(:name)
-        new_params = subject.new(params).deserialize
+        new_params = subject.new(ActionController::Parameters.new(params)).deserialize
         expect(new_params).to_not have_key :name
       end
 
       it 'leaves nil params nil' do
         params[:name] = nil
-        new_params = subject.new(params).deserialize
+        new_params = subject.new(ActionController::Parameters.new(params)).deserialize
         expect(new_params).to have_key :name
         expect(new_params[:name]).to be_nil
       end
@@ -418,12 +451,12 @@ describe ParamsDeserializer do
       end
 
       it 'allows deserialization of a param that does not exist' do
-        new_params = subject.new({}).deserialize
+        new_params = subject.new(ActionController::Parameters.new({})).deserialize
         expect(new_params[:name]).to eql('foo')
       end
 
       it 'uses the present_if proc to determine whether a key should be present' do
-        params = { bar: 'baz', age: 25 }
+        params = ActionController::Parameters.new({ bar: 'baz', age: 25 })
         new_params = subject.new(params).deserialize
         expect(new_params[:age]).to eql(25)
 
@@ -435,10 +468,11 @@ describe ParamsDeserializer do
   end
 
   describe 'subclass' do
+
     it 'inherits attributes' do
       superclass = Class.new(ParamsDeserializer) { attributes :foo }
       subclass = Class.new(superclass)
-      params = { foo: :bar }
+      params = ActionController::Parameters.new({ foo: :bar })
 
       expect(subclass.deserialize(params)).to have_key :foo
     end
@@ -447,28 +481,42 @@ describe ParamsDeserializer do
       superclass = Class.new(ParamsDeserializer) { root :foo }
       subclass = Class.new(superclass)
 
-      expect(subclass.deserialize({ foo: { bar: :baz } })).to have_key :foo
+      expect(
+        subclass.deserialize(
+          ActionController::Parameters.new(
+            { foo: { bar: :baz } }
+          )
+        )
+      ).to have_key :foo
     end
 
     it 'inherits discard root key setting' do
       superclass = Class.new(ParamsDeserializer) { root :foo, discard: true }
       subclass = Class.new(superclass)
 
-      expect(subclass.deserialize({ foo: { bar: :baz } })).to_not have_key :foo
+      expect(subclass.deserialize(
+        ActionController::Parameters.new({ foo: { bar: :baz } })
+      )).to_not have_key :foo
     end
 
     it 'inherits key format' do
       superclass = Class.new(ParamsDeserializer) { format_keys :lower_camel; attribute :foo_bar }
       subclass = Class.new(superclass)
 
-      expect(subclass.deserialize({ foo_bar: :baz })).to have_key :fooBar
+      expect(subclass.deserialize(
+        ActionController::Parameters.new({ foo_bar: :baz })
+      )).to have_key :fooBar
     end
 
     it 'inherits strict mode setting' do
       superclass = Class.new(ParamsDeserializer) { strict true }
       subclass = Class.new(superclass)
 
-      expect { subclass.deserialize({ foo: :bar }) }.to raise_error ParamsDeserializer::InvalidKeyError
+      expect {
+        subclass.deserialize(
+          ActionController::Parameters.new({ foo: :bar })
+        )
+      }.to raise_error ParamsDeserializer::InvalidKeyError
     end
   end
 end
