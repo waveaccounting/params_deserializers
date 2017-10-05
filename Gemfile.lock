@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    params_deserializers (1.2.0)
+    params_deserializers (2.0.0)
       activesupport (>= 5.0)
 
 GEM
@@ -171,7 +171,6 @@ PLATFORMS
 DEPENDENCIES
   guard-rspec
   params_deserializers!
-  pry
   rails (>= 5.0)
   rspec-rails
   sqlite3
