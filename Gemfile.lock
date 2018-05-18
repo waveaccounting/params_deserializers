@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    params_deserializers (2.0.0)
+    params_deserializers (2.1.0)
       activesupport (>= 5.0)
 
 GEM
@@ -53,6 +53,9 @@ GEM
     erubi (1.6.1)
     ffi (1.9.18)
     formatador (0.2.5)
+    generator_spec (0.9.4)
+      activesupport (>= 3.0.0)
+      railties (>= 3.0.0)
     globalid (0.4.0)
       activesupport (>= 4.2.0)
     guard (2.14.1)
@@ -169,6 +172,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  generator_spec
   guard-rspec
   params_deserializers!
   rails (>= 5.0)
@@ -176,4 +180,4 @@ DEPENDENCIES
   sqlite3
 
 BUNDLED WITH
-   1.16.0.pre.2
+   1.16.1
